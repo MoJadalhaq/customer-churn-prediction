@@ -23,6 +23,20 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from model.train_model import train_model  # noqa: E402
 from utils.recommend import get_recommendations  # noqa: E402
 
+
+def _prob_gradient(col, low_color="#ffffff", high_color="#e74c3c"):
+    """Return inline CSS background colours scaled between two hex colours."""
+    lo = tuple(int(low_color[i:i+2], 16) for i in (1, 3, 5))
+    hi = tuple(int(high_color[i:i+2], 16) for i in (1, 3, 5))
+    styles = []
+    vmin, vmax = col.min(), col.max()
+    span = vmax - vmin if vmax != vmin else 1.0
+    for v in col:
+        t = (v - vmin) / span
+        r, g, b = (int(lo[i] + t * (hi[i] - lo[i])) for i in range(3))
+        styles.append(f"background-color: rgb({r},{g},{b})")
+    return styles
+
 # ── Page config ────────────────────────────────────────────────────────────────
 st.set_page_config(
     page_title="Customer Churn Prediction",
@@ -307,7 +321,7 @@ with st.spinner(f"Computing SHAP values on a {SHAP_SAMPLE}-row sample …"):
     else:
         shap_churn = np.array(raw_shap)
 
-mean_abs_shap = np.abs(shap_churn).mean(axis=0)
+mean_abs_shap = np.abs(shap_churn).mean(axis=0).flatten()
 shap_global_df = (
     pd.DataFrame({"Feature": feature_names, "Mean |SHAP|": mean_abs_shap})
     .sort_values("Mean |SHAP|", ascending=True)
@@ -404,7 +418,7 @@ else:
     hr_display_cols = ["Churn_Probability", "Risk_Level"] + preview_feature_cols_hr
     st.dataframe(
         high_risk_df[hr_display_cols]
-        .style.background_gradient(subset=["Churn_Probability"], cmap="Reds"),
+        .style.apply(_prob_gradient, subset=["Churn_Probability"]),
         use_container_width=True,
         height=min(420, 40 + len(high_risk_df) * 35),
     )
@@ -426,7 +440,7 @@ display_cols = ["Churn_Predicted", "Churn_Probability", "Risk_Level"] + preview_
 
 st.dataframe(
     result_df[display_cols]
-    .style.background_gradient(subset=["Churn_Probability"], cmap="RdYlGn_r"),
+    .style.apply(_prob_gradient, subset=["Churn_Probability"]),
     use_container_width=True,
     height=420,
 )
