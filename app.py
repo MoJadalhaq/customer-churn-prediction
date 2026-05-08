@@ -364,7 +364,7 @@ c2.metric("Churn Probability", f"{cust_prob:.1%}")
 c3.metric("Risk Level",        f"{risk_emoji} {risk_label}")
 
 # SHAP waterfall bar chart for this customer
-cust_shap = shap_churn[cust_idx]
+cust_shap = shap_churn[cust_idx].flatten()[:len(feature_names)]
 cust_shap_df = (
     pd.DataFrame({"Feature": feature_names, "SHAP Value": cust_shap})
     .sort_values("SHAP Value")
