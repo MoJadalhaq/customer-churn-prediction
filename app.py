@@ -322,6 +322,7 @@ with st.spinner(f"Computing SHAP values on a {SHAP_SAMPLE}-row sample …"):
         shap_churn = np.array(raw_shap)
 
 mean_abs_shap = np.abs(shap_churn).mean(axis=0).flatten()
+mean_abs_shap = mean_abs_shap[:len(feature_names)]
 shap_global_df = (
     pd.DataFrame({"Feature": feature_names, "Mean |SHAP|": mean_abs_shap})
     .sort_values("Mean |SHAP|", ascending=True)
