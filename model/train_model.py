@@ -8,6 +8,13 @@ import joblib
 import os
 
 
+# Maps common churn text labels → 1 (churned) or 0 (retained).
+_CHURN_LABEL_MAP = {
+    "attrited customer": 1, "churned": 1, "churn": 1, "yes": 1, "true": 1, "1": 1,
+    "existing customer": 0, "retained": 0, "no churn": 0, "no": 0, "false": 0, "0": 0,
+}
+
+
 def preprocess_data(df: pd.DataFrame, target_col: str, encoders: dict = None, fit: bool = True):
     """
     Preprocess a DataFrame for churn modeling.
@@ -24,15 +31,20 @@ def preprocess_data(df: pd.DataFrame, target_col: str, encoders: dict = None, fi
     X = df.drop(columns=[target_col]).copy()
 
     # --- encode target -------------------------------------------------------
-    if y_raw.dtype == object or str(y_raw.dtype) == "bool":
-        le_y = LabelEncoder()
-        y = le_y.fit_transform(y_raw.astype(str)).astype(int)
+    if not pd.api.types.is_numeric_dtype(y_raw):
+        lowered = y_raw.astype(str).str.strip().str.lower()
+        if lowered.isin(_CHURN_LABEL_MAP).all():
+            y = lowered.map(_CHURN_LABEL_MAP).astype(int).values
+        else:
+            le_y = LabelEncoder()
+            y = le_y.fit_transform(y_raw.astype(str)).astype(int)
     else:
         y = y_raw.astype(int).values
 
     # --- separate column types -----------------------------------------------
-    cat_cols = X.select_dtypes(include=["object", "bool"]).columns.tolist()
-    num_cols = X.select_dtypes(include="number").columns.tolist()
+    # Use is_numeric_dtype so object, bool, category, and StringDtype are all caught.
+    cat_cols = [c for c in X.columns if not pd.api.types.is_numeric_dtype(X[c])]
+    num_cols = [c for c in X.columns if pd.api.types.is_numeric_dtype(X[c])]
 
     # --- fill missing values -------------------------------------------------
     for col in num_cols:
